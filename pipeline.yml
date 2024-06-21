@@ -1,0 +1,61 @@
+name: AutomatizationLab5
+
+on:
+  push:
+    branches:
+      - 'main'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up JDK 18
+      uses: actions/setup-java@v2
+      with:
+        java-version: '18'
+        distribution: 'adopt'
+
+    - name: Validate Maven wrapper
+      run: mvn -N io.takari:maven:wrapper
+
+    - name: Build with Maven
+      run: mvn clean package --batch-mode
+
+    - name: Create JAR Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: Lab5-Package
+        path: target/*.jar
+
+    - name: Configure Maven for GitHub Packages
+      run: |
+        mkdir -p ~/.m2
+        echo "<settings>
+                <servers>
+                  <server>
+                    <id>github</id>
+                    <username>${{ github.actor }}</username>
+                    <password>${{ secrets.GITHUB_TOKEN }}</password>
+                  </server>
+                </servers>
+              </settings>" > ~/.m2/settings.xml
+
+    - name: Publish to GitHub Packages
+      run: mvn deploy
+
+  super-lint:
+    name: Lint code base
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Run Super-Linter
+        uses: github/super-linter@v4
+        env:
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
